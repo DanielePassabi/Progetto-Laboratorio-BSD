@@ -19,7 +19,7 @@ N.B.: La descrizione del problema va arricchita, se necessario, in modo da inclu
 N.B. (2): anche se l'esercizio richiede solo la definizione dello schema ER o solo alcune fasi della progettazione, 
 ai fini del progetto di laboratorio di Basi di Dati si richiede l'intero processo di progettazione, ossia tutte le fasi indicate sopra.
 
-------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------------------------------
 
 POSTGRES
 Password per superuser: danymansi
