@@ -1,0 +1,14 @@
+1) All'aggiunta (INSERT/UPDATE) di un esemplare ad una gabbia bisogna controllare che l'abitazione in cui essa sia contenuta abbia il genere corretto.
+2)Alla modifica (spostamento) (UPDATE) di una gabbia in una abitazione, bisogna controllare che il genere dell'animale in essa contenuto combaci con quello assegnato alla nuova abitazione di dest.
+    - non serve eseguire il check sull'inserimento perchè bisogna prima aggiungere una gabbia e poi assegnarli un animale, di conseguenza
+      non è possibile assegnare una gabbia errata alla sua aggiunta in quanto sono sempre vuote durante la creazione.
+3) All'aggiunta (INSERT/UPDATE) di un esemplare bisogna controllare che data arrivo > data nascita.
+4) All'aggiunta (INSERT/UPDATE) di una visita bisogna controllare che data visita > data arrivo esemplare.
+5) Alla modifica di un genere assegnato (UPDATE) ad un'abitazione, bisogna controllare che non vengano violati i vincoli di genere
+
+X) modificare i trigger in modo che si attivino solo alla modifica dei campi di interesse (less overhead)
+
+
+
+
+
