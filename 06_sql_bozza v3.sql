@@ -200,7 +200,7 @@ begin -- CASO 1: gabbia con un esemplare assegnato
 	 	raise exception 'Record non valido; viola il vincolo di genere! ... ';
 	end;
 end;
-$$ language plpgsql;
+$$ language plpgsql;D
 
 
 create or replace function aggiunta_modifica_visita() -- checks n° 4
