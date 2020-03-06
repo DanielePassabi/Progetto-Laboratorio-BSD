@@ -1,11 +1,16 @@
 
 -- CHANGELOG from v2 to v3
--- addedo unique on Esemplare.gabbia --> senza unique: più animali nella stessa gabbia....
+-- added unique on Esemplare.gabbia --> senza unique: più animali nella stessa gabbia....
 -- creato trigger e relativa funzione per la condizione n° 1 e 3
 -- creato trigger e relativa funzione per la condizione n° 2
 -- creato trigger e relativa funzione per la condizione n° 5
 -- creato trigger e relativa funzione per la condizione n° 4
 
+-- CHANGELOG from v3 to v4
+-- rimosso 'errore' dalle stringe di exception perchè postgre lo aggiunge in automatico
+-- creato trigger e relativa funzione per la condizione n° 6
+-- ottimizzazione dei trigger: ora vengono chiamati solo quando modificate le colonne interessate
+-- minor fixes and code cleaning
 
 create table Area(
     nome                varchar(32),
@@ -118,36 +123,45 @@ create table Visita(
         on update cascade
 );
 
-------------------------------------------------------------------------------------------------------------------------------
--- TRIGGERS --
+-------> TRIGGERS <-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-create trigger aggiunta_modifica_esemplare -- checks n° 1 & 3
-before insert or update on Esemplare
+-- 1) All'aggiunta (INSERT/UPDATE) di un esemplare ad una gabbia bisogna controllare che l'abitazione in cui essa sia contenuta abbia il genere corretto.
+-- 2) Alla modifica (spostamento) (UPDATE) di una gabbia in una abitazione, bisogna controllare che il genere dell'animale in essa contenuto combaci con quello assegnato alla nuova abitazione di dest.
+--     nb: non serve eseguire il check sull'inserimento perchè bisogna prima aggiungere una gabbia e poi assegnarli un animale, di conseguenza non è possibile assegnare una gabbia errata alla sua aggiunta in quanto sono sempre vuote durante la creazione.
+-- 3) All'aggiunta (INSERT/UPDATE) di un esemplare bisogna controllare che data arrivo >= data nascita.
+-- 4) All'aggiunta (INSERT/UPDATE) di una visita bisogna controllare che data visita > data arrivo esemplare.
+-- 5) Alla modifica di un genere assegnato (UPDATE) ad un'abitazione, bisogna controllare che non vengano violati i vincoli di genere
+--     nb: non serve il check sull'insert perchè non puoi inserire una abitaziono già con delle gabbie (non c'è rischio che queste violino il vincolo di genere perchè vengono aggiunte e controllate successivamente)
+-- 6) Alla modifica della data di arrivo di un esemplare bisogna controllare che questa sia coerente con le date delle visite: una visita non può essere stato effattuata prima che un esemplare sia arrivato nello zoo.
+
+
+create trigger aggiunta_modifica_esemplare -- checks condition n° 1 & 3 when new esemplare is added
+before insert or update of data_arrivo,data_nascita,genere on Esemplare
 for each row
 execute procedure aggiunta_modifica_esemplare();
 
 create trigger modifica_gabbia -- checks n° 2
-before update on Gabbia
+before update of abitazione on Gabbia
 for each row
 execute procedure modifica_gabbia();
 
 create trigger aggiunta_modifica_visita -- checks n° 4
-before insert or update on Visita
+before insert or update of data on Visita
 for each row
 execute procedure aggiunta_modifica_visita();
 
 create trigger modifica_genere_abitazione -- checks n° 5
-before update on Abitazione
+before update of genere on Abitazione
 for each row
 execute procedure modifica_genere_abitazione();
 
-------------------------------------------------------------------------------------------------------------------------------
--- TRIGGERS SQL FUNCTIONS --
-
+-------> TRIGGERS SQL FUNCTIONS <-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 -- 1) All'aggiunta (INSERT/UPDATE) di un esemplare ad una gabbia bisogna controllare che l'abitazione in cui essa sia contenuta abbia il genere corretto.
 -- 3) All'aggiunta (INSERT/UPDATE) di un esemplare bisogna controllare che data arrivo > data nascita.
-create or replace function aggiunta_modifica_esemplare() -- checks n° 1 & 3
+-- 6) Alla modifica della data di arrivo di un esemplare bisogna controllare che questa sia coerente con le date delle visite: una visita non può essere stato effattuata prima che un esemplare sia arrivato nello zoo.
+
+create or replace function aggiunta_modifica_esemplare() -- checks n° 1,3 & 6
 returns trigger
 as
 $$
@@ -162,25 +176,33 @@ begin
     where new.genere = genere_ok.genere;
 
     if found then
-    	if(new.data_arrivo >= new.data_nascita) then
-		return new;
-	    end if;
+    	if(new.data_arrivo <= new.data_nascita) then -- dopo aver controllato il vincolo 1, controlliamo il vincolo 3 (la coerenza delle date)
             if(TG_OP = 'UPDATE') then
-               raise exception 'ERRORE: Operazione di UPDATE non consentita! La modifica delle date ha portato a delle incongruenze! Vincolo da rispettare: la data di nascita deve essere antecedente o uguale alla data di arrivo';
+               raise exception 'Operazione di UPDATE non consentita! La modifica delle date ha portato a delle incongruenze! Vincolo da rispettare: la data di nascita deve essere antecedente o uguale alla data di arrivo';
             elseif(TG_OP = 'INSERT') then
-               raise exception 'ERRORE: Operazione di INSERT non consentita! L''esemplare possiede delle incongruenze sulle date! Vincolo da rispettare: la data di nascita deve essere antecedente o uguale alla data di arrivo';
+               raise exception 'Operazione di INSERT non consentita! L''esemplare possiede delle incongruenze sulle date! Vincolo da rispettare: la data di nascita deve essere antecedente o uguale alla data di arrivo';
             end if;
+        end if;
+        
+        perform *   -- cheks n°6
+        from    Visita V
+        where   V.esemplare_id = new.id and V.esemplare_gen = new.genere and V.data < new.data_arrivo;
+
+        if found then
+            raise exception 'Operazione di UPDATE non consentita! La modifica della data di arrivo ha causato un''incongruenza: ci sono visite effettuate prima della nuova data di arrivo dell''esemplare ma non si può aver visistato un esemplare prima che questo sia arrivato nello zoo.';
+        end if;
+        return new;
     end if;
     
     if(TG_OP = 'UPDATE') then
         if(new.genere = old.genere) then
-            raise exception 'ERRORE: Operazione di UPDATE non consentita! La gabbia in cui si vuole spostare l''esemplare è contenuta in un abitazione il cui genere assegnato differisce da quello dell''esemplare';
+            raise exception 'Operazione di UPDATE non consentita! La gabbia in cui si vuole spostare l''esemplare è contenuta in un abitazione il cui genere assegnato differisce da quello dell''esemplare';
         elseif(new.gabbia = old.gabbia) then
-            raise exception 'ERRORE: Operazione di UPDATE non consentita! Il nuovo genere assegnato all''esemplare non concide con quello assegnato all''abitazione in cui è contenuta la sua gabbia';
+            raise exception 'Operazione di UPDATE non consentita! Il nuovo genere assegnato all''esemplare non concide con quello assegnato all''abitazione in cui è contenuta la sua gabbia';
         end if;
-        raise exception 'ERRORE: Operazione di UPDATE non consentita! ';
+        raise exception 'Operazione di UPDATE non consentita! ';
     elseif(TG_OP = 'INSERT') then
-       raise exception 'ERRORE: Operazione di INSERT non consentita! La gabbia in cui si vuole inserire l''esemplare è contenuta in un abitazione il cui genere assegnato differisce da quello dell''esemplare';
+       raise exception 'Operazione di INSERT non consentita! La gabbia in cui si vuole inserire l''esemplare è contenuta in un abitazione il cui genere assegnato differisce da quello dell''esemplare';
     end if;
 
 end;
@@ -220,7 +242,7 @@ begin -- CASO 2: gestione del caso in cui la gabbia da spostare è vuota, di con
 	if not found then
 		return NEW;
 	end if;
-	 	raise exception 'ERRORE: Operazione di UPDATE non consentita! Stai spostando una gabbia il cui esemplare contenuto appartiene ad un genere diverso di quello assegnato all''abitazione di destinazione! ';
+	 	raise exception 'Operazione di UPDATE non consentita! Stai spostando una gabbia il cui esemplare contenuto appartiene ad un genere diverso di quello assegnato all''abitazione di destinazione! ';
 end;
 end;
 $$ language plpgsql;
@@ -242,7 +264,7 @@ begin -- controllo prima che l'esemplare specificato dalla visita esista, poi co
     where   E.id = new.esemplare_id and E.genere = new.esemplare_gen;
 
     if not found then
-        raise exception 'ERRORE: Operazione di INSERT/UPDATE non consentita! L''esemplare a cui fa riferimento la visita non esiste';
+        raise exception 'Operazione di INSERT/UPDATE non consentita! L''esemplare a cui fa riferimento la visita non esiste';
     end if;
 
 begin -- una volta assicurati che l'esemplare visitato esista, controllo la coerenza delle date
@@ -253,7 +275,13 @@ begin -- una volta assicurati che l'esemplare visitato esista, controllo la coer
     if found then
         return NEW;
     end if;
-        raise exception 'ERRORE: Operazione di INSERT/UPDATE non consentita! Non è possibile aver visistato un esemplare prima che questo sia arrivato allo zoo!';
+
+    if(TG_OP = 'UPDATE') then
+        raise exception 'Operazione di UPDATE non consentita! Non è possibile aver visistato un esemplare prima che questo sia arrivato allo zoo!';
+    elseif(TG_OP = 'INSERT') then
+        raise exception 'Operazione di INSERT non consentita! Non è possibile aver visistato un esemplare prima che questo sia arrivato allo zoo!';
+    end if;
+        
 end;
 end;
 $$ language plpgsql;
@@ -267,6 +295,7 @@ $$
     -- LOGICA FUNZIONE:
     -- se nell'abitazione A ci sono gabbie con esemplari di genere X, prima di cambiare il genere assegnato in Y devo spostare
     -- questi esemplari/gabbie altrove altrimenti ad update completato avrei un'abitazione con genere assegnato X ma esemplari di genere Y al suo interno!
+    -- nb: non serve il check sull'insert perchè non puoi inserire una abitaziono già con delle gabbie (non c'è rischio che queste violino il vincolo di genere perchè vengono aggiunte e controllate successivamente)
 begin
 
     perform *
@@ -276,7 +305,7 @@ begin
                                                             where  E.gabbia = G.id));
 
     if found then
-        raise exception 'ERRORE: Operazione di UPDATE non consentita! Non puoi cambiare genere assegnato a questa abitazione perché contiene ancora gabbie con esemplari del vecchio genere!';
+        raise exception 'Operazione di UPDATE non consentita! Non puoi cambiare genere assegnato a questa abitazione perché contiene ancora gabbie con esemplari del vecchio genere!';
     end if;
         return new;
 
