@@ -292,10 +292,11 @@ as
 $$
     -- LOGICA FUNZIONE:
     -- se nell'abitazione A ci sono gabbie con esemplari di genere X, prima di cambiare il genere assegnato in Y devo spostare
-    -- questi esemplari/gabbie altrove altrimenti ad update completato avrei un'abitazione con genere assegnato X ma esemplari di genere Y al suo interno!
+    -- questi esemplari/gabbie altrove, altrimenti ad update completato avrei un'abitazione con genere assegnato X ma esemplari di genere Y al suo interno!
     -- nb: non serve il check sull'insert perchè non puoi inserire una abitaziono già con delle gabbie (non c'è rischio che queste violino il vincolo di genere perchè vengono aggiunte e controllate successivamente)
 begin
 
+    -- try with count? faster?
     perform *
     from    Gabbia G
     where   (G.abitazione = new.id) and (new.genere NOT IN (select E.genere
@@ -309,5 +310,7 @@ begin
 
 end;
 $$ language plpgsql;
+
+
 
 
