@@ -1,1 +1,2 @@
 - Aggiungere vincolo: data visita > data arrivo/nascita esemplare sui pdf dell'ER
+- Add unique on Esemplare.gabbia sul relazionale

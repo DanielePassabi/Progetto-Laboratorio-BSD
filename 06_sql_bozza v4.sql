@@ -134,7 +134,6 @@ create table Visita(
 --     nb: non serve il check sull'insert perchè non puoi inserire una abitaziono già con delle gabbie (non c'è rischio che queste violino il vincolo di genere perchè vengono aggiunte e controllate successivamente)
 -- 6) Alla modifica della data di arrivo di un esemplare bisogna controllare che questa sia coerente con le date delle visite: una visita non può essere stato effattuata prima che un esemplare sia arrivato nello zoo.
 
-
 create trigger aggiunta_modifica_esemplare -- checks condition n° 1 & 3 when new esemplare is added
 before insert or update of data_arrivo,data_nascita,genere on Esemplare
 for each row
@@ -160,7 +159,6 @@ execute procedure modifica_genere_abitazione();
 -- 1) All'aggiunta (INSERT/UPDATE) di un esemplare ad una gabbia bisogna controllare che l'abitazione in cui essa sia contenuta abbia il genere corretto.
 -- 3) All'aggiunta (INSERT/UPDATE) di un esemplare bisogna controllare che data arrivo > data nascita.
 -- 6) Alla modifica della data di arrivo di un esemplare bisogna controllare che questa sia coerente con le date delle visite: una visita non può essere stato effattuata prima che un esemplare sia arrivato nello zoo.
-
 create or replace function aggiunta_modifica_esemplare() -- checks n° 1,3 & 6
 returns trigger
 as
