@@ -1,0 +1,276 @@
+---
+title: "PopolazioneDatabase"
+author: "Daniele Passabì"
+date: "6/3/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+
+# CONNESSIONE AD UNA BASE DI DATI
+
+# Prima di tutto, installo il pacchetto RPostgreSQL
+# install.packages("RPostgreSQL")
+
+# Ora ne carico la libreria
+library("RPostgreSQL")
+
+# Carico il driver PostgreSQL (e lo memorizzo in una variabile)
+drv = dbDriver("PostgreSQL")
+
+# Ora creo la connessione, memorizzata anch'essa in una variabile
+
+dbname = "zoo"
+host = "127.0.0.1"
+port = 5432
+user = "postgres"
+password = "dany1998"
+
+con = dbConnect(drv,
+                dbname=dbname,
+                host=host,
+                port=port,             # usually 5432
+                user=user,
+                password=password
+                )
+
+# Controllo che la connessione si sia stabilita in modo corretto
+dbListTables(con)   # --> character(0) se non ci sono Table nel nostro DB
+
+```
+
+```{r}
+
+# AREA
+
+# Creo un vettore con 10 aree
+
+area.nome = c()
+
+for ( i in 1:10 ){
+  area.nome[i] = paste("Area", as.character(i))
+}
+
+area.nome
+
+area.numero_abitazioni = rep(0, 10)
+area.numero_abitazioni
+
+# Creo il DF (che userò poi per la Table su Postgre)
+area_df = data.frame(nome = area.nome,
+                     numero_abitazioni = area.numero_abitazioni)
+
+# Popolo il database, aggiungendo le aree
+dbWriteTable(
+              con,
+              name=c("public","area"),
+              value=area_df,
+              append = TRUE,
+              row.names=FALSE
+              )
+
+```
+
+```{r}
+
+# ANIMALI
+
+genere.nome = readLines("animali.txt")
+length(genere.nome) # 45 animali
+
+genere_df = data.frame(nome = genere.nome)
+head(genere_df)
+
+# Popolo il database, aggiungendo i generi di animali
+dbWriteTable(
+              con,
+              name=c("public","genere"),
+              value=genere_df,
+              append = TRUE,
+              row.names=FALSE
+              )
+
+```
+
+```{r}
+
+# ABITAZIONI
+
+# id (=nome), genere, numero_gabbie, area
+
+# Creo un vettore con 100 id di abitazioni
+abitazione.nome = c()
+
+for ( i in 1:100 ){
+  abitazione.nome[i] = 1110000 + i     # per convenzione le abitazioni iniziano con '111'
+}
+
+# Numero gabbie (vettore di 0 lungo 100)
+abitazione.numero_gabbie = rep(0, 100)
+
+# Ottengo i generi
+vettore_genere = dbGetQuery(con, "select nome from genere")   # query sul db
+vettore_genere = vettore_genere$nome
+
+# Ottengo le aree
+vettore_area = dbGetQuery(con, "select nome from area")       # query sul db
+vettore_area = vettore_area$nome
+
+# Creo il DF (che userò poi per la Table su Postgre)
+abitazione_df = data.frame(
+                            id = abitazione.nome,
+                            numero_gabbie = abitazione.numero_gabbie,
+                            genere = sample(vettore_genere, 100, replace = TRUE),
+                            area = sample(vettore_area, 100, replace = TRUE)
+                          )
+
+# Popolo il database, aggiungendo le abitazioni
+dbWriteTable(
+              con,
+              name=c("public","abitazione"),
+              value=abitazione_df,
+              append = TRUE,
+              row.names=FALSE
+              )
+
+
+```
+
+```{r}
+
+# GABBIA ed ESEMPLARE
+
+# Idea alla base
+
+# 1. Creo 10 gabbie per ogni abitazione (numero totale abitazioni = 100)
+# 2. Itero su ogni abitazione, poi su ogni gabbia, e creo 10 istanze di animali di quel tipo
+
+# GABBIA
+
+# Creo un vettore con 10*100=1000 id di gabbie
+gabbia.id = c()
+
+for ( i in 1:1000 ){
+  gabbia.id[i] = 2220000 + i    # per convenzione le gabbie iniziano con '222'
+}
+
+# Ora devo assegnare casualmente 10 gabbie ad ogni abitazione
+vettore_abitazioni = dbGetQuery(con, "select id from abitazione")   # query sul db
+vettore_abitazioni = vettore_abitazioni$id
+
+gabbia.abitazione = sample(rep(vettore_abitazioni, 10)) # NB: sample serve a mischiare gli elementi del vettore
+
+# Controllo sulla lunghezza (deve essere 1000)
+length(gabbia.id)
+length(gabbia.abitazione)
+
+# Creo il DF
+gabbia_df = data.frame(
+                        id = gabbia.id,
+                        abitazione = gabbia.abitazione
+                        )
+
+head(gabbia_df)
+
+# Popolo il DB
+dbWriteTable(
+              con,
+              name=c("public","gabbia"),
+              value=gabbia_df,
+              append = TRUE,
+              row.names=FALSE
+              )
+
+```
+
+```{r}
+
+# GABBIA ed ESEMPLARE
+
+# Idea alla base
+
+# 1. Creo 10 gabbie per ogni abitazione (numero totale abitazioni = 100)
+# 2. Itero su ogni gabbia, trovo il genere dell'abitazione a cui è assegnata e creo un esemplare del genere corretto
+
+# ESEMPLARE
+
+# Ottengo la coppia (gabbia, abitazione)
+# Ottengo la coppia (abitazione, genere)
+# Ricavo la coppia (gabbia, genere)
+
+# Per farlo basta un join ed una selezione
+# SELECT gabbia.id, abitazione.genere
+# FROM gabbia JOIN abitazione ON abitazione.id = gabbia.abitazione
+
+vettore_gabbia_genere = dbGetQuery(
+                                    con, 
+                                    "SELECT gabbia.id, abitazione.genere FROM gabbia JOIN abitazione ON abitazione.id = gabbia.abitazione"
+                                   )
+vettore_gabbia_genere
+
+# Creo l'animale in modo corretto, il quale ha bisogno di:
+# [X] id                  [333...]
+# [ ] genere              [DEVE essere lo stesso della gabbia in cui viene contenuto]
+# [X] nome                [nomi_animali.txt]
+# [X] sesso               [generato casualmente (non è influente)]
+# [X] paese_provenienza   [paesi.txt]
+# [X] data_nascita        [generare casualmente]
+# [X] data_arrivo         [data_nascita + data casuale]
+# [ ] gabbia              [presente in vettore_gabbia_genere]
+
+# Creo un vettore con 1000 id di esemplare
+esemplare.id = c()
+
+for ( i in 1:1000 ){
+  esemplare.id[i] = 3330000 + i    # per convenzione gli esemplari (id) iniziano con '333'
+}
+
+# Creo un vettore per il nome dell'esemplare con 1000 nomi di animali presi casualmente da 247 nomi di animali
+vettore_nomi_animali = readLines("nomi_animali.txt")
+esemplare.nome = sample(vettore_nomi_animali, 1000, replace = TRUE)
+
+# Creo un vettore per il sesso dell'esemplare lungo 1000
+vettore_sesso = c("M","F")
+esemplare.sesso = sample(vettore_sesso, 1000, replace = TRUE)
+
+# Creo un vettore per il paese di provenienza dell'esemplare lungo 1000
+vettore_provenienza = readLines("paesi.txt")
+esemplare.provenienza = sample(vettore_provenienza, 1000, replace = TRUE)
+
+# Creo un vettore per la data di nascita dell'esemplare con 1000 date casuali
+vettore_data_nascita = sample(seq(as.Date('1999/01/01'), as.Date('2020/01/01'), by="day"), 1000)
+
+# Creo un vettore per la data di arrivo dell'esemplare date successive randomiche a quelle di nascita
+vettore_1000_giorni = 1:1000
+vettore_da_sommare = sample(vettore_1000_giorni, 1000, replace = TRUE)
+vettore_data_arrivo = vettore_data_nascita + vettore_da_sommare
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
