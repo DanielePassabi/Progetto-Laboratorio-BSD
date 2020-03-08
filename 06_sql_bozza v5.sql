@@ -12,9 +12,17 @@
 -- ottimizzazione dei trigger: ora vengono chiamati solo quando modificate le colonne interessate
 -- minor fixes and code cleaning
 
+-- CHANGELOG from v4 to v5
+-- creato trigger e relativa funzione per l'aggiornamento dell'attributo derivato n_abitazioni in Area
+-- creato trigger e relativa funzione per l'aggiornamento dell'attributo derivato n_gabbie in Abitazione
+-- creati trigger e relative funzioni per il set del default dei due campi n_abitazioni e n_gabbie
+-- rimosso turno di pulizia da veterinario (non serve...)
+
+
+
 create table Area(
     nome                varchar(32),
-    numero_abitazioni   integer check(numero_abitazioni>=0) not null,
+    numero_abitazioni   integer check(numero_abitazioni>=0) not null default 0,
 
     constraint pk_area primary key(nome)
 ); -- aggiungere trigger per calcolo numero abitazioni
@@ -28,7 +36,7 @@ create table Genere(
 create table Abitazione(
     id              oid, -- PostgreSQL Object IDentifier type
     genere          varchar(32) not null,  
-    numero_gabbie   integer check(numero_gabbie>=0) not null,
+    numero_gabbie   integer check(numero_gabbie>=0) not null default 0,
     area            varchar(32) not null,
 
     constraint pk_Abitazione primary key (id),
@@ -75,7 +83,7 @@ create table Addetto_pulizie(
     cognome         varchar(32) not null, 
     stipendio       integer check(stipendio >= 0) not null, 
     telefono        varchar(16), 
-    turno_pulizia   varchar(64) not null, -- do an entity?
+    turno_pulizia   varchar(64) not null,
 
     constraint pk_Addetto_pulizie primary key (CF)
 );
@@ -100,7 +108,6 @@ create table Veterinario(
     cognome         varchar(32) not null, 
     stipendio       integer check(stipendio >= 0) not null, 
     telefono        varchar(16), 
-    turno_pulizia   varchar(1024) not null, -- do an entity?
 
     constraint pk_Veterinario primary key (CF)
 );
@@ -296,7 +303,6 @@ $$
     -- nb: non serve il check sull'insert perchè non puoi inserire una abitaziono già con delle gabbie (non c'è rischio che queste violino il vincolo di genere perchè vengono aggiunte e controllate successivamente)
 begin
 
-    -- try with count? faster?
     perform *
     from    Gabbia G
     where   (G.abitazione = new.id) and (new.genere NOT IN (select E.genere
@@ -310,6 +316,119 @@ begin
 
 end;
 $$ language plpgsql;
+
+
+
+-------> DERIVED ATTRIBUTES TRIGGERS <-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- 1) All'aggiunta/spostamento/rimozione di una gabbia bisogna aggiornare l'attributo derivato n_gabbie sulle abitazioni interessate.
+-- 2) All'aggiunta/spostamento/rimozione di una abitazione bisogna aggiornare l'attributo derivato n_abitazioni sulle aree interessate.
+-- 3) Alla creazione di abitazioni/gabbie l'attributo derivato dovrebbe essere inizializzato a 0
+-- 4) Un update del n_gabbie/n_abitazioni non dovrebbe esser potuto fare manualmente
+
+
+create trigger aggiorna_numero_gabbie -- executes n° 1
+after insert or delete or update of abitazione on Gabbia
+for each row
+execute procedure aggiorna_numero_gabbie();
+
+create trigger aggiorna_numero_abitazione -- exectues n° 2
+after insert or delete or update of area on Abitazione
+for each row
+execute procedure aggiorna_numero_abitazioni();
+
+create trigger set_default_numero_gabbie -- exectues n° 3
+after insert on Abitazione
+for each row
+execute procedure set_default_numero_gabbie();
+
+create trigger set_default_numero_abitazioni -- exectues n° 3
+after insert on Area
+for each row
+execute procedure set_default_numero_abitazioni();
+
+-------> DERIVED ATTRIBUTES SQL FUNCTIONS <-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+create or replace function aggiorna_numero_gabbie() -- exectues n° 1
+returns trigger
+as
+$$
+    -- LOGICA FUNZIONE:
+    -- dopo aver eseguito update/insert/delete di un gabbia, calcolo il numero di gabbie contenute nella sua nuova abitazione (inesistente nel caso di insert) di apparteneneza e ne aggiorno il campo (che sarà +1)
+    -- eseguo la stessa operazione per la sua vecchia abitazione di appartenenza (inesistente nel caso di insert) (che sarà -1)
+begin
+
+    Update Abitazione set numero_gabbie = (select  count(*)
+        									from   Gabbia G
+        									where  G.abitazione = new.abitazione)
+    where  id = new.abitazione;
+
+    Update Abitazione set numero_gabbie = (select  count(*)
+        									from   Gabbia G
+        									where  G.abitazione = old.abitazione)
+    where  id = old.abitazione;
+		 
+	return new;
+
+end;
+$$ language plpgsql;
+
+
+create or replace function set_default_numero_gabbie() -- exectues n° 3
+returns trigger
+as
+$$
+begin
+
+    Update Abitazione A set numero_gabbie = 0
+    where  A.id = new.id;
+
+    return new;
+
+end;
+$$ language plpgsql;
+
+
+create or replace function aggiorna_numero_abitazioni() -- exectues n° 2
+returns trigger
+as
+$$
+    -- LOGICA FUNZIONE:
+    -- dopo aver eseguito update/insert/delete di un abitazione, calcolo il numero di abitazioni contenute nella sua nuova area (inesistente nel caso di insert) di apparteneneza e ne aggiorno il campo (che sarà +1)
+    -- eseguo la stessa operazione per la sua vecchia area di appartenenza (inesistente nel caso di insert) (che sarà -1)
+begin
+
+    Update Area set numero_abitazioni = (select  count(*)
+        								  from   Abitazione A
+        								 where   A.area = new.area)
+    where  nome = new.area;
+
+   Update Area set numero_abitazioni = (select   count(*)
+        								  from   Abitazione A
+        								 where   A.area = old.area)
+    where  nome = old.area;
+		 
+	return new;
+
+end;
+$$ language plpgsql;
+
+
+create or replace function set_default_numero_abitazioni() -- exectues n° 3
+returns trigger
+as
+$$
+begin
+
+    Update Area set numero_abitazioni = 0
+    where  nome = new.nome;
+
+    return new;
+
+end;
+$$ language plpgsql;
+
+
+
 
 
 
