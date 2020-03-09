@@ -28,14 +28,15 @@ dbname = "zoo"
 host = "127.0.0.1"
 port = 5432
 user = "postgres"
-password = "dany1998"
+password_dany = "dany1998"
+password_mansi = "nvidia"
 
 con = dbConnect(drv,
                 dbname=dbname,
                 host=host,
                 port=port,             # usually 5432
                 user=user,
-                password=password
+                password=password_mansi
                 )
 
 # Controllo che la connessione si sia stabilita in modo corretto
