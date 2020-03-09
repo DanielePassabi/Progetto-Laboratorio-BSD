@@ -21,7 +21,7 @@
 TODO ON TRIGGERS:
 X) trigger 1-3 distinguere modifica gabbia e modifica genere? 2 errori concettuali diversi, stessa procedura di verifica
 X) n°3 e n°4 degli attr.der. possono essere implementati impedendo all'utente di modificare quei valori sia in update che insert! come?
-
+X) posso modificare n_ab su area... non dovrei
 
 
 

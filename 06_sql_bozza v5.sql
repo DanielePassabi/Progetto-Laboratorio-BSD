@@ -15,8 +15,9 @@
 -- CHANGELOG from v4 to v5
 -- creato trigger e relativa funzione per l'aggiornamento dell'attributo derivato n_abitazioni in Area
 -- creato trigger e relativa funzione per l'aggiornamento dell'attributo derivato n_gabbie in Abitazione
--- creati trigger e relative funzioni per il set del default dei due campi n_abitazioni e n_gabbie
+-- creati trigger e relative funzioni per il set del default dei due campi n_abitazioni e n_gabbie (n° 3)
 -- rimosso turno di pulizia da veterinario (non serve...)
+-- creati trigger e relative funzioni per il divieto della modifica manuale degli attributi derivati (n° 4)
 
 
 
@@ -323,28 +324,39 @@ $$ language plpgsql;
 -- 1) All'aggiunta/spostamento/rimozione di una gabbia bisogna aggiornare l'attributo derivato n_gabbie sulle abitazioni interessate.
 -- 2) All'aggiunta/spostamento/rimozione di una abitazione bisogna aggiornare l'attributo derivato n_abitazioni sulle aree interessate.
 -- 3) Alla creazione di abitazioni/gabbie l'attributo derivato dovrebbe essere inizializzato a 0
--- 4) Un update del n_gabbie/n_abitazioni non dovrebbe esser potuto fare manualmente
+-- 4) Bisogna negare la modifca manuale all'utente degli attributi Abitazione.numero_gabbie e Area.numero_abitazioni
 
 
-create trigger aggiorna_numero_gabbie -- executes n° 1
+create trigger aggiorna_numero_gabbie -- triggers check n° 1
 after insert or delete or update of abitazione on Gabbia
 for each row
 execute procedure aggiorna_numero_gabbie();
 
-create trigger aggiorna_numero_abitazione -- exectues n° 2
+create trigger aggiorna_numero_abitazioni -- triggers check  n° 2
 after insert or delete or update of area on Abitazione
 for each row
 execute procedure aggiorna_numero_abitazioni();
 
-create trigger set_default_numero_gabbie -- exectues n° 3
-after insert on Abitazione
+create trigger deny_modifica_manuale_numero_gabbie -- triggers check  n° 4
+before update on Abitazione
+for each row
+execute procedure deny_modifica_manuale_numero_gabbie();
+
+create trigger deny_modifica_manuale_numero_abitazioni -- triggers check  n° 4
+before update on Area
+for each row
+execute procedure deny_modifica_manuale_numero_abitazioni();
+
+create trigger set_default_numero_gabbie -- triggers check  n° 3
+before insert on Abitazione
 for each row
 execute procedure set_default_numero_gabbie();
 
-create trigger set_default_numero_abitazioni -- exectues n° 3
-after insert on Area
+create trigger set_default_numero_abitazioni -- triggers check  n° 3
+before insert on Area
 for each row
 execute procedure set_default_numero_abitazioni();
+
 
 -------> DERIVED ATTRIBUTES SQL FUNCTIONS <-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -357,17 +369,35 @@ $$
     -- eseguo la stessa operazione per la sua vecchia abitazione di appartenenza (inesistente nel caso di insert) (che sarà -1)
 begin
 
-    Update Abitazione set numero_gabbie = (select  count(*)
+    ALTER TABLE Abitazione DISABLE TRIGGER deny_modifica_manuale_numero_gabbie;
+
+    update Abitazione set numero_gabbie = (select  count(*)
         									from   Gabbia G
         									where  G.abitazione = new.abitazione)
     where  id = new.abitazione;
 
-    Update Abitazione set numero_gabbie = (select  count(*)
+    update Abitazione set numero_gabbie = (select  count(*)
         									from   Gabbia G
         									where  G.abitazione = old.abitazione)
     where  id = old.abitazione;
-		 
+
+	ALTER TABLE Abitazione ENABLE TRIGGER deny_modifica_manuale_numero_gabbie;	
+
 	return new;
+
+end;
+$$ language plpgsql;
+
+create or replace function deny_modifica_manuale_numero_gabbie()
+returns trigger
+as
+$$
+begin
+
+    if(new.numero_gabbie != old.numero_gabbie) then
+        raise exception'MODIFICA DI UN ATTRIBUTO DERIVATO: Il numero di gabbie contenute in un''abitazione è un attributo derivato e quindi non può essere modificato manualmente! verrà reimpostato al valore corretto!';
+    end if;
+        return new;
 
 end;
 $$ language plpgsql;
@@ -379,9 +409,8 @@ as
 $$
 begin
 
-    Update Abitazione A set numero_gabbie = 0
-    where  A.id = new.id;
-
+    new.numero_gabbie := 0;
+    raise warning 'Il numero di gabbie è stato impostato a 0 in quanto il valore presente nella query di INSERT non era valido';
     return new;
 
 end;
@@ -397,17 +426,36 @@ $$
     -- eseguo la stessa operazione per la sua vecchia area di appartenenza (inesistente nel caso di insert) (che sarà -1)
 begin
 
-    Update Area set numero_abitazioni = (select  count(*)
+    ALTER TABLE Area DISABLE TRIGGER deny_modifica_manuale_numero_abitazioni;
+
+    update Area set numero_abitazioni = (select  count(*)
         								  from   Abitazione A
         								 where   A.area = new.area)
     where  nome = new.area;
 
-   Update Area set numero_abitazioni = (select   count(*)
+    update Area set numero_abitazioni = (select   count(*)
         								  from   Abitazione A
         								 where   A.area = old.area)
     where  nome = old.area;
-		 
+
+	ALTER TABLE Area ENABLE TRIGGER deny_modifica_manuale_numero_abitazioni;	 
+
 	return new;
+
+end;
+$$ language plpgsql;
+
+
+create or replace function deny_modifica_manuale_numero_abitazioni()
+returns trigger
+as
+$$
+begin
+
+    if(new.numero_abitazioni != old.numero_abitazioni) then
+        raise exception 'MODIFICA DI UN ATTRIBUTO DERIVATO: Il numero di abitazioni contenute in un''area è un attributo derivato e quindi non può essere modificato manualmente! verrà reimpostato al valore corretto!';
+    end if;
+        return new;
 
 end;
 $$ language plpgsql;
@@ -419,17 +467,9 @@ as
 $$
 begin
 
-    Update Area set numero_abitazioni = 0
-    where  nome = new.nome;
-
+    new.numero_abitazioni := 0;
+    raise warning 'Il numero di abitazioni è stato impostato a 0 in quanto il valore presente nella query di INSERT non era valido';
     return new;
 
 end;
 $$ language plpgsql;
-
-
-
-
-
-
-
