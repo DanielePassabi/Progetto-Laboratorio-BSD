@@ -17,7 +17,7 @@ La progettazione dovrà consistere delle seguenti fasi:
  - progettazione concettuale
  - progettazione logica
  - progettazione fisica
- - implementazione
+ - implementazione (con popolazione in R)
  - analisi dei dati in R
 
 N.B.: La descrizione del problema va arricchita, se necessario, in modo da includere tutti (o quasi) i costrutti trattati durante il corso.

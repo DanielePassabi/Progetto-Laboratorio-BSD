@@ -1,3 +1,2 @@
 - Aggiungere vincolo: data visita > data arrivo/nascita esemplare sui pdf dell'ER
-- Add unique on Esemplare.gabbia sul relazionale
-- se modifico il genere si spezza lol
+- se modifico il nome di un genere si spezza lol
