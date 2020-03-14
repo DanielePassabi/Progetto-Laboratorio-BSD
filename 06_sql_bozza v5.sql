@@ -18,7 +18,7 @@
 -- creati trigger e relative funzioni per il set del default dei due campi n_abitazioni e n_gabbie (n° 3)
 -- rimosso turno di pulizia da veterinario (non serve...)
 -- creati trigger e relative funzioni per il divieto della modifica manuale degli attributi derivati (n° 4)
-
+-- aggiunto (causa dimenticanza) update ...gabbia... su esemplare
 
 
 create table Area(
@@ -142,8 +142,8 @@ create table Visita(
 --     nb: non serve il check sull'insert perchè non puoi inserire una abitaziono già con delle gabbie (non c'è rischio che queste violino il vincolo di genere perchè vengono aggiunte e controllate successivamente)
 -- 6) Alla modifica della data di arrivo di un esemplare bisogna controllare che questa sia coerente con le date delle visite: una visita non può essere stato effattuata prima che un esemplare sia arrivato nello zoo.
 
-create trigger aggiunta_modifica_esemplare -- checks condition n° 1 & 3 when new esemplare is added
-before insert or update of data_arrivo,data_nascita,genere on Esemplare
+create trigger aggiunta_modifica_esemplare -- checks condition n° 1 & 3 & 6 when new esemplare is added
+before insert or update of data_arrivo,data_nascita,genere,gabbia on Esemplare
 for each row
 execute procedure aggiunta_modifica_esemplare();
 
