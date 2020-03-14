@@ -1,0 +1,143 @@
+---
+title: "AnalisiDeiDati"
+author: "Daniele Passabì"
+date: "14/3/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+
+# CONNESSIONE AD UNA BASE DI DATI
+
+# Prima di tutto, installo il pacchetto RPostgreSQL
+# install.packages("RPostgreSQL")
+
+# Ora ne carico la libreria
+library("RPostgreSQL")
+
+# Carico il driver PostgreSQL (e lo memorizzo in una variabile)
+drv = dbDriver("PostgreSQL")
+
+# Ora creo la connessione, memorizzata anch'essa in una variabile
+
+dbname = "zoo"
+host = "127.0.0.1"
+port = 5432
+user = "postgres"
+password_dany = "dany1998"
+password_mansi = "nvidia"
+
+con = dbConnect(drv,
+                dbname=dbname,
+                host=host,
+                port=port,             # usually 5432
+                user=user,
+                password=password_dany
+                )
+
+# Controllo che la connessione si sia stabilita in modo corretto
+dbListTables(con)   # --> character(0) se non ci sono Table nel nostro DB
+
+```
+
+```{r}
+
+# Interrogo il DB e ottengo tutte le tables
+
+area_df = dbGetQuery(con, "select * from area")
+paste("Numero aree:", length(area_df$nome))
+
+abitazione_df = dbGetQuery(con, "select * from abitazione")
+paste("Numero abitazioni:", length(abitazione_df$id))
+
+gabbia_df = dbGetQuery(con, "select * from gabbia")
+paste("Numero gabbie:", length(gabbia_df$id))
+
+genere_df = dbGetQuery(con, "select * from genere")
+paste("Numero generi:", length(genere_df$nome))
+
+esemplare_df = dbGetQuery(con, "select * from esemplare")
+paste("Numero esemplari:", length(esemplare_df$nome))
+
+addetto_pulizie_df = dbGetQuery(con, "select * from addetto_pulizie")
+paste("Numero addetti pulizie:", length(addetto_pulizie_df$cf))
+
+pulire_df = dbGetQuery(con, "select * from pulire")
+paste("Numero istanze pulire:", length(pulire_df$addetto_pulizie))
+
+veterinario_df = dbGetQuery(con, "select * from veterinario")
+paste("Numero veterinari:", length(veterinario_df$cf))
+
+visite_df = dbGetQuery(con, "select * from visita")
+paste("Numero visite:", length(visite_df$data))
+
+dbDisconnect(con)
+
+```
+
+```{r}
+
+# Librerie utili per l'analisi
+library(dplyr)
+library(ggplot2)
+
+# Iniziamo con una semplice analisi sulle abitazioni
+head(abitazione_df)
+
+# ABITAZIONE - frequenza genere
+# Generi più presente nelle abitazioni, non considero i generi presenti < 3 volte
+temp_df = abitazione_df %>%
+  count(genere) %>%
+  filter(n > 2)
+
+# Barplot
+p = ggplot(data=temp_df, aes(y=n, x=reorder(genere, n), fill=-n)) +
+  geom_bar(stat="identity", show.legend = FALSE) + 
+  labs(title="ABITAZIONE - frequenza genere", x="Genere\n", y = "\nFrequenza") +
+  coord_flip()
+
+p 
+
+# AREA - frequenza abitazioni
+temp_df = abitazione_df %>%
+  count(area)
+
+# Barplot
+p = ggplot(data=temp_df, aes(y=n, x=reorder(area, -n), fill=-n)) +
+  geom_bar(stat="identity", show.legend = FALSE) + 
+  labs(title="AREA - frequenza abitazioni", x="\nNome Area", y = "Frequenza\n")
+
+p 
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
