@@ -1,2 +1,3 @@
-- Aggiungere vincolo: data visita > data arrivo/nascita esemplare sui pdf dell'ER
-- se modifico il nome di un genere si spezza lol
+- se modifico il nome di un genere o di un'area si spezza lol
+- n° accessi?
+- Viste?
