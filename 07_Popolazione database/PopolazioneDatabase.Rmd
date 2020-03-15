@@ -36,7 +36,7 @@ con = dbConnect(drv,
                 host=host,
                 port=port,             # usually 5432
                 user=user,
-                password=password_mansi
+                password=password_dany
                 )
 
 # Controllo che la connessione si sia stabilita in modo corretto
@@ -147,23 +147,23 @@ dbWriteTable(
 
 # Idea alla base
 
-# 1. Creo 10 gabbie per ogni abitazione (numero totale abitazioni = 100)
-# 2. Itero su ogni abitazione, poi su ogni gabbia, e creo 10 istanze di animali di quel tipo
+# 1. Creo 50 gabbie per ogni abitazione (numero totale abitazioni = 100)
+# 2. Itero su ogni abitazione, poi su ogni gabbia, e creo 50 istanze di animali di quel tipo
 
 # GABBIA
 
 # Creo un vettore con 10*100=1000 id di gabbie
 gabbia.id = c()
 
-for ( i in 1:1000 ){
+for ( i in 1:5000 ){
   gabbia.id[i] = 2220000 + i    # per convenzione le gabbie iniziano con '222'
 }
 
-# Ora devo assegnare casualmente 10 gabbie ad ogni abitazione
+# Ora devo assegnare casualmente 50 gabbie ad ogni abitazione
 vettore_abitazioni = dbGetQuery(con, "select id from abitazione")   # query sul db
 vettore_abitazioni = vettore_abitazioni$id
 
-gabbia.abitazione = sample(rep(vettore_abitazioni, 10)) # NB: sample serve a mischiare gli elementi del vettore
+gabbia.abitazione = sample(rep(vettore_abitazioni, 50)) # NB: sample serve a mischiare gli elementi del vettore
 
 # Controllo sulla lunghezza (deve essere 1000)
 length(gabbia.id)
@@ -194,7 +194,7 @@ dbWriteTable(
 
 # Idea alla base
 
-# 1. Creo 10 gabbie per ogni abitazione (numero totale abitazioni = 100)
+# 1. Creo 50 gabbie per ogni abitazione (numero totale abitazioni = 100)
 # 2. Itero su ogni gabbia, trovo il genere dell'abitazione a cui è assegnata e creo un esemplare del genere corretto
 
 # ESEMPLARE
@@ -215,46 +215,46 @@ vettore_gabbia_genere = dbGetQuery(
 
 # Creo l'animale in modo corretto, il quale ha bisogno di:
 # [X] id                  [333...]
-# [ ] genere              [DEVE essere lo stesso della gabbia in cui viene contenuto]
+# [X] genere              [DEVE essere lo stesso della gabbia in cui viene contenuto]
 # [X] nome                [nomi_animali.txt]
 # [X] sesso               [generato casualmente (non è influente)]
 # [X] paese_provenienza   [paesi.txt]
 # [X] data_nascita        [generare casualmente]
 # [X] data_arrivo         [data_nascita + data casuale]
-# [ ] gabbia              [presente in vettore_gabbia_genere]
+# [X] gabbia              [presente in vettore_gabbia_genere]
 
-# Creo un vettore con 1000 id di esemplare
+# Creo un vettore con 4500 id di esemplare
 esemplare.id = c()
 
-for ( i in 1:1000 ){
+for ( i in 1:4500 ){
   esemplare.id[i] = 3330000 + i    # per convenzione gli esemplari (id) iniziano con '333'
 }
 
-# Creo un vettore per il nome dell'esemplare con 1000 nomi di animali presi casualmente da 247 nomi di animali
+# Creo un vettore per il nome dell'esemplare con 4500 nomi di animali presi casualmente da 247 nomi di animali
 vettore_nomi_animali = readLines("nomi_animali.txt")
-esemplare.nome = sample(vettore_nomi_animali, 1000, replace = TRUE)
+esemplare.nome = sample(vettore_nomi_animali, 4500, replace = TRUE)
 
-# Creo un vettore per il sesso dell'esemplare lungo 1000
+# Creo un vettore per il sesso dell'esemplare lungo 4500
 vettore_sesso = c("M","F")
-esemplare.sesso = sample(vettore_sesso, 1000, replace = TRUE)
+esemplare.sesso = sample(vettore_sesso, 4500, replace = TRUE)
 
-# Creo un vettore per il paese di provenienza dell'esemplare lungo 1000
+# Creo un vettore per il paese di provenienza dell'esemplare lungo 4500
 vettore_provenienza = readLines("paesi.txt")
-esemplare.provenienza = sample(vettore_provenienza, 1000, replace = TRUE)
+esemplare.provenienza = sample(vettore_provenienza, 4500, replace = TRUE)
 
-# Creo un vettore per la data di nascita dell'esemplare con 1000 date casuali
-esemplare.data_nascita = sample(seq(as.Date('1999/01/01'), as.Date('2020/01/01'), by="day"), 1000)
+# Creo un vettore per la data di nascita dell'esemplare con 4500 date casuali
+esemplare.data_nascita = sample(seq(as.Date('1999/01/01'), as.Date('2020/01/01'), by="day"), 4500)
 
 # Creo un vettore per la data di arrivo dell'esemplare date successive randomiche a quelle di nascita
-vettore_1000_giorni = 1:1000
-vettore_da_sommare = sample(vettore_1000_giorni, 1000, replace = TRUE)
+vettore_giorni = 1:4500
+vettore_da_sommare = sample(vettore_giorni, 4500, replace = TRUE)
 esemplare.data_arrivo = esemplare.data_nascita + vettore_da_sommare
 
 # Ottengo il vettore con la gabbia
-esemplare.gabbia = vettore_gabbia_genere$id
+esemplare.gabbia = vettore_gabbia_genere$id[1:4500]
 
 # Ottengo il vettore con il genere
-esemplare.genere = vettore_gabbia_genere$genere
+esemplare.genere = vettore_gabbia_genere$genere[1:4500]
 
 # Creo il DF
 esemplare_df = data.frame(
@@ -370,13 +370,16 @@ dbWriteTable(
 
 # PULIRE
 
+# NB: in media, ad ogni addetto sono assegnate 3 abitazioni
+
 # Addetto pulizie
 vettore_addetto_pulizie = dbGetQuery(con, "select cf from addetto_pulizie")
-pulire.addetto_pulizie = vettore_addetto_pulizie$cf
+vettore_addetto_pulizie = vettore_addetto_pulizie$cf
+pulire.addetto_pulizie = rep(vettore_addetto_pulizie, 3)
 
 # Abitazione
 vettore_abitazione = dbGetQuery(con, "select id from abitazione")
-pulire.abitazione = sample(vettore_abitazione$id) # randomizzo l'ordine
+pulire.abitazione = sample(rep(vettore_abitazione$id), 3) # randomizzo l'ordine
 
 # Creo il DF
 pulire_df = data.frame(
@@ -403,13 +406,13 @@ dbWriteTable(
 
 # Nome
 veterinario.nome = randomNames(
-                                100,
+                                20,
                                 which.names="first"
                               )
 
 # Cognome
 veterinario.cognome = randomNames(
-                                   100,
+                                   20,
                                    which.names="last"
                                  )
 # CF
@@ -430,15 +433,15 @@ for ( n in veterinario.nome ){
 }
 
 # Stipendio
-vettore_stipendio_base = rep(2000, 100)
+vettore_stipendio_base = rep(2000, 20)
 vettore_stipendio_agg = 0:600
-vettore_da_sommare = sample(vettore_stipendio_agg, 100, replace = TRUE)
+vettore_da_sommare = sample(vettore_stipendio_agg, 20, replace = TRUE)
 veterinario.stipendio = vettore_stipendio_base + vettore_da_sommare
 
 # Telefono
-vettore_telefono_prefisso = rep(348000000, 100)
+vettore_telefono_prefisso = rep(348000000, 20)
 vettore_telefono_random = 1:999999
-veterinario.telefono = vettore_telefono_prefisso + sample(vettore_telefono_random, 100, replace = FALSE)
+veterinario.telefono = vettore_telefono_prefisso + sample(vettore_telefono_random, 20, replace = FALSE)
 
 # Creo il DF
 veterinario_df = data.frame(
@@ -479,20 +482,25 @@ dbWriteTable(
 # veterinario
 vettore_veterinario = dbGetQuery(con, "select cf from veterinario")
 vettore_veterinario = vettore_veterinario$cf
-visita.veterinario = sample(vettore_veterinario, 1000, replace = TRUE)
+visita.veterinario = sample(vettore_veterinario, 270000, replace = TRUE)
+length(visita.veterinario)
 
 # esemplare ID e genere
 vettore_esemplare = dbGetQuery(con, "select id,genere from esemplare")
-visita.esemplare_id = vettore_esemplare$id
-visita.esemplare_genere = vettore_esemplare$genere
+visita.esemplare_id = rep(vettore_esemplare$id, 60)         # ottengo vettore lungo 270k
+visita.esemplare_genere = rep(vettore_esemplare$genere, 60) # ottengo vettore lungo 270k
+
+length(visita.esemplare_id)
+length(visita.esemplare_genere)
 
 # data
 vettore_esemplare_data_arrivo = dbGetQuery(con, "select data_arrivo from esemplare")
-vettore_esemplare_data_arrivo = vettore_esemplare_data_arrivo$data_arrivo
-visita.data = vettore_esemplare_data_arrivo + 1
+vettore_esemplare_data_arrivo = rep(vettore_esemplare_data_arrivo$data_arrivo, 60)
+
+visita.data = max(vettore_esemplare_data_arrivo) + 1:270000
 
 # peso
-visita.peso = sample(1:1200, 1000)
+visita.peso = sample(1:1200, 270000, replace = TRUE)
 
 # diagnostica
 vettore_diagnostica = c(
@@ -502,7 +510,7 @@ vettore_diagnostica = c(
   "Animale in pericolo di vita"
   )
 
-visita.diagnostica = sample(vettore_diagnostica, 1000, replace = TRUE)
+visita.diagnostica = sample(vettore_diagnostica, 270000, replace = TRUE)
 
 # dieta
 vettore_dieta = c(
@@ -511,7 +519,7 @@ vettore_dieta = c(
   "Quantita di cibo assunta dall'animale non sufficiente, aumentare le dosi"
   )
 
-visita.dieta = sample(vettore_dieta, 1000, replace = TRUE)
+visita.dieta = sample(vettore_dieta, 270000, replace = TRUE)
 
 # Creo il DF
 visita_df = data.frame(
@@ -536,18 +544,9 @@ dbWriteTable(
 
 ```
 
+```{r}
 
+# Disconnessione DB
+dbDisconnect(con)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+```
