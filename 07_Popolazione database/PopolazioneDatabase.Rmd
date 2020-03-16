@@ -81,7 +81,7 @@ dbWriteTable(
 # ANIMALI
 
 genere.nome = readLines("animali.txt")
-length(genere.nome) # 45 animali
+length(genere.nome) # 80 animali
 
 genere_df = data.frame(nome = genere.nome)
 head(genere_df)
