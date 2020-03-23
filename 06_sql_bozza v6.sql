@@ -346,11 +346,6 @@ after insert or delete or update of area on Abitazione
 for each row
 execute procedure aggiorna_numero_abitazioni();
 
-create trigger allow_modifica_nome_Area
-before update of nome on Area
-for each row
-execute procedure allow_modifica_nome_Area();
-
 create trigger deny_modifica_manuale_numero_gabbie -- triggers check  n° 4 for n_gabbie
 before update of numero_gabbie on Abitazione
 for each row
