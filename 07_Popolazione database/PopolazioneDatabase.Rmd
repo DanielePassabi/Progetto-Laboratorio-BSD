@@ -48,18 +48,15 @@ dbListTables(con)   # --> character(0) se non ci sono Table nel nostro DB
 
 # AREA
 
-# Creo un vettore con 10 aree
-
+# Nome delle aree
 area.nome = c()
 
 for ( i in 1:10 ){
   area.nome[i] = paste("Area", as.character(i))
 }
 
-area.nome
-
+# Numero di abitazioni (inizialmente un vettore di 0 lungo 10)
 area.numero_abitazioni = rep(0, 10)
-area.numero_abitazioni
 
 # Creo il DF (che userò poi per la Table su Postgre)
 area_df = data.frame(nome = area.nome,
@@ -246,7 +243,7 @@ esemplare.provenienza = sample(vettore_provenienza, 4500, replace = TRUE)
 esemplare.data_nascita = sample(seq(as.Date('1999/01/01'), as.Date('2020/01/01'), by="day"), 4500)
 
 # Creo un vettore per la data di arrivo dell'esemplare date successive randomiche a quelle di nascita
-vettore_giorni = 1:4500
+vettore_giorni = 1:365 # circa 1 anno
 vettore_da_sommare = sample(vettore_giorni, 4500, replace = TRUE)
 esemplare.data_arrivo = esemplare.data_nascita + vettore_da_sommare
 
@@ -468,7 +465,7 @@ dbWriteTable(
 
 # VISITA
 
-# Idea: popolo il database con la prima visita di ogni animale --> NB: ci sono 1000 animali
+# Nota: supponendo di essere a 10 anni dal lancio dell'app, le date delle visite devono essere congruenti
 
 # Serve:
 # - veterinario (CF)
@@ -496,8 +493,9 @@ length(visita.esemplare_genere)
 # data
 vettore_esemplare_data_arrivo = dbGetQuery(con, "select data_arrivo from esemplare")
 vettore_esemplare_data_arrivo = rep(vettore_esemplare_data_arrivo$data_arrivo, 60)
+min_data = max(vettore_esemplare_data_arrivo)
 
-visita.data = max(vettore_esemplare_data_arrivo) + 1:270000
+visita.data = sample(seq(min_data, as.Date('2030/01/01'), by="day"), 270000, replace=TRUE)
 
 # peso
 visita.peso = sample(1:1200, 270000, replace = TRUE)
@@ -550,3 +548,31 @@ dbWriteTable(
 dbDisconnect(con)
 
 ```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

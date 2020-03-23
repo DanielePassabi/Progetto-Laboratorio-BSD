@@ -93,10 +93,10 @@ dbDisconnect(con)
 head(abitazione_df)
 
 # ABITAZIONE - frequenza genere
-# Generi più presente nelle abitazioni, non considero i generi presenti < 3 volte
+# Generi più presente nelle abitazioni, non considero i generi presenti solo 1 volta
 temp_df = abitazione_df %>%
   count(genere) %>%
-  filter(n > 2)
+  filter(n > 1)
 
 ggplot(data=temp_df, aes(y=n, x=reorder(genere, n), fill=-n)) +
   geom_bar(stat="identity", show.legend = FALSE) + 
@@ -139,7 +139,7 @@ ggplot(data=temp_df, aes(y=n, x=reorder(genere, n), fill=-n)) +
 # Troviamo i generi di esemplare meno presenti nel DB
 temp_df = full_df %>%
   count(genere) %>%
-  filter(n < 45)
+  filter(n < 55)
 
 ggplot(data=temp_df, aes(y=n, x=reorder(genere, n), fill=-n)) +
   geom_bar(stat="identity", show.legend = FALSE) + 
