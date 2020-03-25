@@ -502,3 +502,12 @@ create trigger modifica_genere_abitazione -- checks n° 5
 before update of genere on Abitazione
 for each row
 execute procedure modifica_genere_abitazione();
+
+-- INDEXES
+
+create index esemplare_genere_index on Esemplare(genere);
+
+create index esemplare_nome_index on Esemplare(nome);
+
+create index esemplare_id_index on Esemplare(id);
+

@@ -24,6 +24,7 @@
 -- CHANGELOG from v5 to v6
 -- commentato il codice dove necessario
 -- refactoring
+-- added 3 indexes
 
 
 create table Area(
@@ -498,3 +499,13 @@ return new;
 
 end;
 $$ language plpgsql;
+
+
+----------- INDEXES -------------------------------------------------
+create index esemplare_genere_index on Esemplare(genere);
+
+create index esemplare_nome_index on Esemplare(nome);
+
+create index esemplare_id_index on Esemplare(id);
+
+
