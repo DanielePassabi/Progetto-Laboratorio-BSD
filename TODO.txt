@@ -1,3 +1,4 @@
 - se modifico il nome di un genere o di un'area si spezza lol
 - n° accessi?
 - Viste?
+- check visiSSSta on code
