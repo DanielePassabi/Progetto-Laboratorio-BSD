@@ -85,7 +85,7 @@ create table Esemplare(
 );
 
 create table Addetto_pulizie(
-    CF              char(16),
+    CF              char(16) check(length(CF) = 16),
     nome            varchar(32) not null, 
     cognome         varchar(32) not null, 
     stipendio       integer check(stipendio >= 0) not null, 
@@ -96,7 +96,7 @@ create table Addetto_pulizie(
 );
 
 create table Pulire(
-    addetto_pulizie     char(16),
+    addetto_pulizie     char(16) check(length(addetto_pulizie) = 16),
     abitazione          oid, -- PostgreSQL Object IDentifier data-type
 
     constraint pk_Pulire primary key (addetto_pulizie,abitazione),
@@ -110,7 +110,7 @@ create table Pulire(
 
 
 create table Veterinario(
-    CF              char(16),
+    CF              char(16) check(length(CF) = 16),
     nome            varchar(32) not null, 
     cognome         varchar(32) not null, 
     stipendio       integer check(stipendio >= 0) not null, 
@@ -120,7 +120,7 @@ create table Veterinario(
 );
 
 create table Visita(
-    veterinario     varchar(32), 
+    veterinario     char(16) check(length(veterinario) = 16),
     esemplare_id    oid, 
     esemplare_gen   varchar(32), 
     data            date,
@@ -507,6 +507,8 @@ create index esemplare_genere_index on Esemplare(genere);
 create index esemplare_nome_index on Esemplare(nome);
 
 create index esemplare_id_index on Esemplare(id);
+
+create index visita_genere_id_index on Visita(esemplare_id);
 
 ----------- VIEWS ---------------------------------------------------
 
