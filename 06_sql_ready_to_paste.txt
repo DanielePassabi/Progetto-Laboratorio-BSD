@@ -514,6 +514,5 @@ create index esemplare_id_index on Esemplare(id);
 --VIEWS 
 
 create view info_gabbia as
-select gabbia.id, abitazione.id, abitazione.genere, abitazione.area
+select gabbia.id, abitazione.id as abitazione, abitazione.genere, abitazione.area
 from gabbia join abitazione on abitazione.id = gabbia.abitazione;
-

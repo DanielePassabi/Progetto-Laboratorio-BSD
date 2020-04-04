@@ -27,7 +27,6 @@ Cicogna
 Cigno coscoroba
 Clamidosauro
 Cormorano
-Dendrocigna delle Indie Occidentali
 Drago barbuto
 Emu
 Elefante
@@ -68,6 +67,7 @@ Otaria del Capo
 Panda rosso
 Pantera
 Pellicano rosa
+Pettirosso
 Puma
 Tamarino di Edipo
 Tamarino imperatore
