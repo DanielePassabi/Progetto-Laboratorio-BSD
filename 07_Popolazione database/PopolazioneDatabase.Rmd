@@ -240,10 +240,10 @@ vettore_provenienza = readLines("paesi.txt")
 esemplare.provenienza = sample(vettore_provenienza, 4500, replace = TRUE)
 
 # Creo un vettore per la data di nascita dell'esemplare con 4500 date casuali
-esemplare.data_nascita = sample(seq(as.Date('1999/01/01'), as.Date('2020/01/01'), by="day"), 4500)
+esemplare.data_nascita = sample(seq(as.Date('2010/01/01'), as.Date('2020/01/01'), by="day"), 4500, replace=TRUE)
 
 # Creo un vettore per la data di arrivo dell'esemplare date successive randomiche a quelle di nascita
-vettore_giorni = 1:365 # circa 1 anno
+vettore_giorni = 1:160 # circa 6 mesi
 vettore_da_sommare = sample(vettore_giorni, 4500, replace = TRUE)
 esemplare.data_arrivo = esemplare.data_nascita + vettore_da_sommare
 
@@ -476,26 +476,48 @@ dbWriteTable(
 # - diagnostica
 # - dieta
 
+# INIZIO PROCEDURA
+
+# esemplare ID, genere e data_arrivo
+vettore_esemplare = dbGetQuery(con, "select id,genere,data_arrivo from esemplare")
+
+# Preparo gli array vuoti
+visita.esemplare_id = c()
+visita.esemplare_genere = c()
+visita.data = c()
+
+idx = 1
+
+# servono 60 date idonee per ogni esemplare, quindi almeno 60 giorni di scarto tra l'ultima data di arrivo possibile e data_max (considerando il caso peggiore)
+data_max = as.Date('2020/12/31') # da mettere 2020 nella versione definitiva
+
+# itero su ogni esemplare
+for (index in 1:4500) {
+  
+  # trovo la data di arrivo dell'esemplare
+  data_arrivo = vettore_esemplare$data_arrivo[index]
+  
+  # ottengo le 60 date idonee (60 * 4500 = 270000 visite previste dalla tabella dei volumi)
+  giorni = as.numeric(data_max - data_arrivo, units="days")
+  giorni_da_sommare = sample(1:giorni, 60, replace=FALSE)  # FALSE perchè le date *devono* essere diverse --> la data potrebbe essere l'unico attributo che distingue due chiavi uguali!
+  
+  # Aggiorno i 3 vettori
+  for (i in 1:60) {
+    visita.esemplare_id[idx] = vettore_esemplare$id[index]
+    visita.esemplare_genere[idx] = vettore_esemplare$genere[index]
+    visita.data[idx] = as.character(data_arrivo + giorni_da_sommare[i]) # DEVO convertire in stringa per non perdere il valore della data (R converte in intero se la si aggiunge ad una lista)
+    idx = idx + 1
+  }
+}
+
+
+# Ottengo gli altri vettori necessari alla popolazione del db
+
 # veterinario
 vettore_veterinario = dbGetQuery(con, "select cf from veterinario")
 vettore_veterinario = vettore_veterinario$cf
 visita.veterinario = sample(vettore_veterinario, 270000, replace = TRUE)
 length(visita.veterinario)
-
-# esemplare ID e genere
-vettore_esemplare = dbGetQuery(con, "select id,genere from esemplare")
-visita.esemplare_id = rep(vettore_esemplare$id, 60)         # ottengo vettore lungo 270k
-visita.esemplare_genere = rep(vettore_esemplare$genere, 60) # ottengo vettore lungo 270k
-
-length(visita.esemplare_id)
-length(visita.esemplare_genere)
-
-# data
-vettore_esemplare_data_arrivo = dbGetQuery(con, "select data_arrivo from esemplare")
-vettore_esemplare_data_arrivo = rep(vettore_esemplare_data_arrivo$data_arrivo, 60)
-min_data = max(vettore_esemplare_data_arrivo)
-
-visita.data = sample(seq(min_data, as.Date('2030/01/01'), by="day"), 270000, replace=TRUE)
 
 # peso
 visita.peso = sample(1:1200, 270000, replace = TRUE)
@@ -524,7 +546,7 @@ visita_df = data.frame(
                         veterinario = visita.veterinario,
                         esemplare_id = visita.esemplare_id,
                         esemplare_gen = visita.esemplare_genere,
-                        data = visita.data,
+                        data = as.Date(visita.data), # converto nuovamente in date
                         peso = visita.peso,
                         diagnostica = visita.diagnostica,
                         dieta = visita.dieta
@@ -548,9 +570,6 @@ dbWriteTable(
 dbDisconnect(con)
 
 ```
-
-
-
 
 
 
