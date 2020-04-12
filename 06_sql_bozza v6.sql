@@ -132,7 +132,7 @@ create table Visita(
     constraint fk_veterinario_Visita_Veterinario foreign key (veterinario) references Veterinario(CF)
         on delete restrict -- non posso eliminare un veterinario dal DB se ho delle visite da lui effettuate nello storico
         on update cascade,
-    constraint fk_esemplare_gen_Visista_Genere foreign key (esemplare_gen,esemplare_id) references Esemplare(genere,id) 
+    constraint fk_esemplare_gen_Visita_Genere foreign key (esemplare_gen,esemplare_id) references Esemplare(genere,id) 
         on delete cascade -- se un esemplare viene rimosso, cancello tutte le visite eseguite su di esso
         on update cascade 
 );
@@ -205,7 +205,7 @@ begin
         where   V.esemplare_id = new.id and V.esemplare_gen = new.genere and V.data < new.data_arrivo;
 
         if found then -- cerco visite la cui data è antecedente alla nuova data di arrivo, se le trovo lancio un'eccezione, altrimenti tutti i 3 controlli sono stati passati con successo: ritorno new!
-            raise exception 'Operazione di UPDATE non consentita! La modifica della data di arrivo ha causato un''incongruenza: ci sono visite effettuate prima della nuova data di arrivo dell''esemplare ma non si può aver visistato un esemplare prima che questo sia arrivato nello zoo.';
+            raise exception 'Operazione di UPDATE non consentita! La modifica della data di arrivo ha causato un''incongruenza: ci sono visite effettuate prima della nuova data di arrivo dell''esemplare ma non si può aver Visitato un esemplare prima che questo sia arrivato nello zoo.';
         end if;
         return new;
     end if; -- endif del primo controllo
@@ -294,9 +294,9 @@ begin -- controllo prima che l'esemplare specificato dalla visita esista, poi co
         end if;
 
         if(TG_OP = 'UPDATE') then
-            raise exception 'Operazione di UPDATE non consentita! Non è possibile aver visistato un esemplare prima che questo sia arrivato allo zoo!';
+            raise exception 'Operazione di UPDATE non consentita! Non è possibile aver Visitato un esemplare prima che questo sia arrivato allo zoo!';
         elseif(TG_OP = 'INSERT') then
-            raise exception 'Operazione di INSERT non consentita! Non è possibile aver visistato un esemplare prima che questo sia arrivato allo zoo!';
+            raise exception 'Operazione di INSERT non consentita! Non è possibile aver Visitato un esemplare prima che questo sia arrivato allo zoo!';
         end if;
 
     end;

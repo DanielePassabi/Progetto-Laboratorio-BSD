@@ -1,4 +1,15 @@
-- se modifico il nome di un genere o di un'area si spezza lol
-- check visiSSSta on code
-- update code R on relazione (DANY)
-- do some tests with triggers :):):) (MANSI)
+FINAL REV:
+
+Mansi:
+-> Refactoring sql
+-> testare triggers per l'ennesima volta
+-> provare a fixare le 2 rinomine
+
+Dany:
+-> Refactoring R
+
+Both [15 pomeriggio]:
+-> Ripopolare un db da zero con entrambi i codici completi
+-> versione esportabile del db
+-> zip
+-> rilettura finale e pdf relazione
