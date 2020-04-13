@@ -1,31 +1,8 @@
+-- Codice SQL per la creazione del db --
+-- è sufficiente un copia/incolla sul querytool --
 
--- CHANGELOG from v2 to v3
--- added unique on Esemplare.gabbia --> senza unique: più animali nella stessa gabbia....
--- creato trigger e relativa funzione per la condizione n° 1 e 3
--- creato trigger e relativa funzione per la condizione n° 2
--- creato trigger e relativa funzione per la condizione n° 5
--- creato trigger e relativa funzione per la condizione n° 4
-
--- CHANGELOG from v3 to v4
--- rimosso 'errore' dalle stringe di exception perchè postgre lo aggiunge in automatico
--- creato trigger e relativa funzione per la condizione n° 6
--- ottimizzazione dei trigger: ora vengono chiamati solo quando modificate le colonne interessate
--- minor fixes and code cleaning
-
--- CHANGELOG from v4 to v5
--- creato trigger e relativa funzione per l'aggiornamento dell'attributo derivato n_abitazioni in Area
--- creato trigger e relativa funzione per l'aggiornamento dell'attributo derivato n_gabbie in Abitazione
--- creati trigger e relative funzioni per il set del default dei due campi n_abitazioni e n_gabbie (n° 3)
--- rimosso turno di pulizia da veterinario (non serve...)
--- creati trigger e relative funzioni per il divieto della modifica manuale degli attributi derivati (n° 4)
--- aggiunto (causa dimenticanza) update ...gabbia... su esemplare
--- migliorati i trigger dei due deny degli attributi derivati: aggiunto update of <...> (DA CONTROLLARE)
-
--- CHANGELOG from v5 to v6
--- commentato il codice dove necessario
--- refactoring
--- added 3 indexes
-
+------------------------------------------------------------------------------------------------------------------------------------
+-- TABELLE -------------------------------------------------------------------------------------------------------------------------
 
 create table Area(
     nome                varchar(32),
@@ -108,7 +85,6 @@ create table Pulire(
         on update cascade
 );
 
-
 create table Veterinario(
     CF              char(16) check(length(CF) = 16),
     nome            varchar(32) not null, 
@@ -137,7 +113,8 @@ create table Visita(
         on update cascade 
 );
 
--------> TRIGGERS <-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------------------------------
+-- FUNZIONI SQL RELATIVE AI TRIGGER PER I VINCOLI DI INTEGRITA'   ------------------------------------------------------------------------
 
 -- 1) All'aggiunta (INSERT/UPDATE) di un esemplare ad una gabbia bisogna controllare che l'abitazione in cui essa sia contenuta abbia il genere corretto.
 -- 2) Alla modifica (spostamento) (UPDATE) di una gabbia in una abitazione, bisogna controllare che il genere dell'animale in essa contenuto combaci con quello assegnato alla nuova abitazione di dest.
@@ -148,30 +125,10 @@ create table Visita(
 --     nb: non serve il check sull'insert perchè non puoi inserire una abitaziono già con delle gabbie (non c'è rischio che queste violino il vincolo di genere perchè vengono aggiunte e controllate successivamente)
 -- 6) Alla modifica della data di arrivo di un esemplare bisogna controllare che questa sia coerente con le date delle visite: una visita non può essere stato effattuata prima che un esemplare sia arrivato nello zoo.
 
-create trigger aggiunta_modifica_esemplare -- checks condition n° 1 & 3 & 6 when new esemplare is added
-before insert or update of data_arrivo,data_nascita,genere,gabbia on Esemplare
-for each row
-execute procedure aggiunta_modifica_esemplare();
+-------------------------------------------------------------------------------------------------------------------------------------------
 
-create trigger modifica_gabbia -- checks n° 2
-before update of abitazione on Gabbia
-for each row
-execute procedure modifica_gabbia();
-
-create trigger aggiunta_modifica_visita -- checks n° 4
-before insert or update of data on Visita
-for each row
-execute procedure aggiunta_modifica_visita();
-
-create trigger modifica_genere_abitazione -- checks n° 5
-before update of genere on Abitazione
-for each row
-execute procedure modifica_genere_abitazione();
-
--------> TRIGGERS SQL FUNCTIONS <-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
--- 1) All'aggiunta (INSERT/UPDATE) di un esemplare ad una gabbia bisogna controllare che l'abitazione in cui essa sia contenuta abbia il genere corretto.
--- 3) All'aggiunta (INSERT/UPDATE) di un esemplare bisogna controllare che data arrivo > data nascita.
+-- 1) All'aggiunta (INSERT/UPDATE) di un esemplare ad una gabbia bisogna controllare che l'abitazione in cui essa è contenuta abbia il genere corretto (che combaci con quello dell'esemplare).
+-- 3) All'aggiunta (INSERT/UPDATE) di un esemplare (nello zoo) bisogna controllare che data arrivo > data nascita.
 -- 6) Alla modifica della data di arrivo di un esemplare bisogna controllare che questa sia coerente con le date delle visite: una visita non può essere stato effattuata prima che un esemplare sia arrivato nello zoo.
 create or replace function aggiunta_modifica_esemplare() -- checks n° 1,3 & 6
 returns trigger
@@ -204,7 +161,7 @@ begin
         from    Visita V
         where   V.esemplare_id = new.id and V.esemplare_gen = new.genere and V.data < new.data_arrivo;
 
-        if found then -- cerco visite la cui data è antecedente alla nuova data di arrivo, se le trovo lancio un'eccezione, altrimenti tutti i 3 controlli sono stati passati con successo: ritorno new!
+        if found then -- cerco visite la cui data è antecedente alla nuova data di arrivo, se le trovo lancio un'eccezione, altrimenti tutti i 3 controlli sono stati passati con successo: ritorno la tupla "new"!
             raise exception 'Operazione di UPDATE non consentita! La modifica della data di arrivo ha causato un''incongruenza: ci sono visite effettuate prima della nuova data di arrivo dell''esemplare ma non si può aver Visitato un esemplare prima che questo sia arrivato nello zoo.';
         end if;
         return new;
@@ -226,7 +183,7 @@ end;
 $$ language plpgsql;
 
 
--- 2) Alla modifica (spostamento) (UPDATE) di una gabbia in una abitazione, bisogna controllare che il genere dell'animale in essa contenuto combaci con quello assegnato alla nuova abitazione di dest.
+-- 2) Alla modifica (spostamento) (UPDATE) di una gabbia in una abitazione, bisogna controllare che il genere dell'animale in essa contenuto combaci con quello assegnato alla nuova abitazione di destinazione.
 create or replace function modifica_gabbia() -- checks n° 2
 returns trigger
 as
@@ -271,7 +228,7 @@ returns trigger
 as
 $$
     -- LOGICA FUNZIONE:
-    -- All'aggiunta o modifica di una visita bisogna controllare che il campo data sia coerente, ovvero che la data di visita non sia antecedente a quella di arrivo dell'esemplare nello zoo in quanto non è possibile!
+    -- All'aggiunta o modifica di una visita bisogna controllare che il campo data sia coerente, ovvero che la data di nessuna visita non sia antecedente a quella di arrivo dell'esemplare nello zoo in quanto non è possibile!
     -- Inoltre bisogna anche controllare che esista l'esemplare prima di controllarne la data
 
 begin -- controllo prima che l'esemplare specificato dalla visita esista, poi controllerò la coerenza delle date.
@@ -289,10 +246,11 @@ begin -- controllo prima che l'esemplare specificato dalla visita esista, poi co
         from    Esemplare E
         where   E.id = new.esemplare_id and E.genere = new.esemplare_gen and E.data_arrivo <= new.data;
 
-        if found then
+        if found then   -- date coerenti
             return NEW;
         end if;
 
+        -- date non coerenti, lancio un'eccezione
         if(TG_OP = 'UPDATE') then
             raise exception 'Operazione di UPDATE non consentita! Non è possibile aver Visitato un esemplare prima che questo sia arrivato allo zoo!';
         elseif(TG_OP = 'INSERT') then
@@ -312,7 +270,7 @@ $$
     -- LOGICA FUNZIONE:
     -- se nell'abitazione A ci sono gabbie con esemplari di genere X, prima di cambiare il genere assegnato in Y devo spostare
     -- questi esemplari/gabbie altrove, altrimenti ad update completato avrei un'abitazione con genere assegnato X ma esemplari di genere Y al suo interno!
-    -- nb: non serve il check sull'insert perchè non puoi inserire una abitaziono già con delle gabbie (non c'è rischio che queste violino il vincolo di genere perchè vengono aggiunte e controllate successivamente)
+    -- nb: non serve il check sull'insert perchè non puoi inserire una abitazione già con delle gabbie (non c'è rischio che queste violino il vincolo di genere perchè vengono aggiunte e controllate successivamente)
 begin
 
     perform *   -- cerco degli esemplari contenuti in gabbie dell'abitazione di cui sto cambiando genere, se ne trovo, allora non posso cambiare il genere o violerei il vincolo di genere!
@@ -329,45 +287,38 @@ begin
 end;
 $$ language plpgsql;
 
+--------------------------------------------------------------------------------------------------------------------------------------------
+-- TRIGGERS x VINCOLI DI INTEGRITA'  -------------------------------------------------------------------------------------------------------
 
--------> DERIVED ATTRIBUTES TRIGGERS <-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+create trigger aggiunta_modifica_esemplare -- checks condition n° 1 & 3 & 6 when new esemplare is added
+before insert or update of data_arrivo,data_nascita,genere,gabbia on Esemplare
+for each row
+execute procedure aggiunta_modifica_esemplare();
+
+create trigger modifica_gabbia -- checks n° 2
+before update of abitazione on Gabbia
+for each row
+execute procedure modifica_gabbia();
+
+create trigger aggiunta_modifica_visita -- checks n° 4
+before insert or update of data on Visita
+for each row
+execute procedure aggiunta_modifica_visita();
+
+create trigger modifica_genere_abitazione -- checks n° 5
+before update of genere on Abitazione
+for each row
+execute procedure modifica_genere_abitazione();
+
+------------------------------------------------------------------------------------------------------------------------------------------
+-- FUNZIONI SQL RELATIVE AIGLI ATTRIBUTI DERIVATI   --------------------------------------------------------------------------------------
+
 -- 1) All'aggiunta/spostamento/rimozione di una gabbia bisogna aggiornare l'attributo derivato n_gabbie sulle abitazioni interessate.
 -- 2) All'aggiunta/spostamento/rimozione di una abitazione bisogna aggiornare l'attributo derivato n_abitazioni sulle aree interessate.
 -- 3) Alla creazione di abitazioni/gabbie l'attributo derivato dovrebbe essere inizializzato a 0
 -- 4) Bisogna negare la modifca manuale all'utente degli attributi Abitazione.numero_gabbie e Area.numero_abitazioni
 
-
-create trigger aggiorna_numero_gabbie -- triggers check n° 1
-after insert or delete or update of abitazione on Gabbia
-for each row
-execute procedure aggiorna_numero_gabbie();
-
-create trigger aggiorna_numero_abitazioni -- triggers check  n° 2
-after insert or delete or update of area on Abitazione
-for each row
-execute procedure aggiorna_numero_abitazioni();
-
-create trigger deny_modifica_manuale_numero_gabbie -- triggers check  n° 4 for n_gabbie
-before update of numero_gabbie on Abitazione
-for each row
-execute procedure deny_modifica_manuale_numero_gabbie();
-
-create trigger deny_modifica_manuale_numero_abitazioni -- triggers check  n° 4 for n_abitazioni
-before update of numero_abitazioni on Area
-for each row
-execute procedure deny_modifica_manuale_numero_abitazioni();
-
-create trigger set_default_numero_gabbie -- triggers check  n° 3 for n_gabbie
-before insert on Abitazione
-for each row
-execute procedure set_default_numero_gabbie();
-
-create trigger set_default_numero_abitazioni -- triggers check  n° 3 for n_abitazioni
-before insert on Area
-for each row
-execute procedure set_default_numero_abitazioni();
-
--------> DERIVED ATTRIBUTES SQL FUNCTIONS <-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------------------------
 
 -- 1) All'aggiunta/spostamento/rimozione di una gabbia bisogna aggiornare l'attributo derivato n_gabbie sulle abitazioni interessate.
 create or replace function aggiorna_numero_gabbie() -- exectues n°1
@@ -500,8 +451,42 @@ return new;
 end;
 $$ language plpgsql;
 
+------------------------------------------------------------------------------------------------------------------------------------------
+-- TRIGGER RELATIVI AGLI ATTRIBUTI DERIVATI   --------------------------------------------------------------------------------------------
 
------------ INDEXES -------------------------------------------------
+create trigger aggiorna_numero_gabbie -- triggers check n° 1
+after insert or delete or update of abitazione on Gabbia
+for each row
+execute procedure aggiorna_numero_gabbie();
+
+create trigger aggiorna_numero_abitazioni -- triggers check  n° 2
+after insert or delete or update of area on Abitazione
+for each row
+execute procedure aggiorna_numero_abitazioni();
+
+create trigger deny_modifica_manuale_numero_gabbie -- triggers check  n° 4 for n_gabbie
+before update of numero_gabbie on Abitazione
+for each row
+execute procedure deny_modifica_manuale_numero_gabbie();
+
+create trigger deny_modifica_manuale_numero_abitazioni -- triggers check  n° 4 for n_abitazioni
+before update of numero_abitazioni on Area
+for each row
+execute procedure deny_modifica_manuale_numero_abitazioni();
+
+create trigger set_default_numero_gabbie -- triggers check  n° 3 for n_gabbie
+before insert on Abitazione
+for each row
+execute procedure set_default_numero_gabbie();
+
+create trigger set_default_numero_abitazioni -- triggers check  n° 3 for n_abitazioni
+before insert on Area
+for each row
+execute procedure set_default_numero_abitazioni();
+
+------------------------------------------------------------------------------------------------------------------------------------------
+-- CREAZIONE DEGLI INDICI  ---------------------------------------------------------------------------------------------------------------
+
 create index esemplare_genere_index on Esemplare(genere);
 
 create index esemplare_nome_index on Esemplare(nome);
@@ -510,7 +495,8 @@ create index esemplare_id_index on Esemplare(id);
 
 create index visita_genere_id_index on Visita(esemplare_id);
 
------------ VIEWS ---------------------------------------------------
+------------------------------------------------------------------------------------------------------------------------------------------
+-- CREAZIONE VISTE  ----------------------------------------------------------------------------------------------------------------------
 
 create view info_gabbia as
 select gabbia.id, abitazione.id as abitazione, abitazione.genere, abitazione.area

@@ -21,7 +21,7 @@ library("RPostgreSQL")
 drv = dbDriver("PostgreSQL")
 
 # Ora creo la connessione, memorizzata anch'essa in una variabile (con)
-dbname = "zoo"
+dbname = "zoo_final"
 host = "127.0.0.1"
 port = 5432
 user = "postgres"
@@ -33,7 +33,7 @@ con = dbConnect(drv,
                 host=host,
                 port=port,             # usually 5432
                 user=user,
-                password=password_dany
+                password=password_mansi
                 )
 
 # Controllo che la connessione si sia stabilita correttamente
